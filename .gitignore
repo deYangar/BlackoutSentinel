@@ -1,0 +1,24 @@
+# 打包产物 / 中间文件
+dist/
+build/
+*.spec.bak
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 运行时生成（含用户配置，可能有密码）
+blackout_sentinel_config.json
+blackout_sentinel_config.json.bak
+blackout_sentinel_service.log
+*.log
+.nw_write_test
+
+# 内部开发记录
+PROGRESS.md
+
+# 临时脚本/截图
+_*.py
+_*.ps1
+_*.png
