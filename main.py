@@ -76,6 +76,16 @@ def _write_autostart_result(text: str):
         pass
 
 
+def _safe_print(text: str):
+    """windowed exe（console=False）下 sys.stdout 为 None，print 会抛异常导致后续
+    代码（如结果文件写入）不执行——安装/卸载结果必须落盘，print 只做尽力而为。"""
+    try:
+        if sys.stdout is not None:
+            print(text)
+    except Exception:
+        pass
+
+
 def _install(args):
     import sentinel_autostart as autostart
     import sentinel_core as core
@@ -100,10 +110,11 @@ def _install(args):
         ok, msg = autostart.install_method(m)
         results.append(f"[{'OK' if ok else '失败'}] {m}: {msg}")
     text = "\n".join(results)
-    print(text)
+    # 结果文件必须先写：windowed exe 下 print 可能抛异常，写在后面会被跳过
+    _write_autostart_result(text)
+    _safe_print(text)
     core.append_file_log(core.service_log_path(),
                          "自启安装: " + " | ".join(results))
-    _write_autostart_result(text)
     if "--bg-nopause" not in args:
         try:
             input("\n按回车退出...")
@@ -129,10 +140,10 @@ def _uninstall(args):
         ok, msg = autostart.uninstall_method(m)
         results.append(f"[{'OK' if ok else '失败'}] {m}: {msg}")
     text = "\n".join(results)
-    print(text)
+    _write_autostart_result(text)
+    _safe_print(text)
     core.append_file_log(core.service_log_path(),
                          "自启卸载: " + " | ".join(results))
-    _write_autostart_result(text)
     if "--bg-nopause" not in args:
         try:
             input("\n按回车退出...")
@@ -151,8 +162,8 @@ def _status():
                 extra = "（运行中）"
             elif st == 1:
                 extra = "（已停止）"
-        print(f"  [{state}]{extra} {label}  <{name}>")
-    print(f"管理员权限: {'是' if autostart.is_admin() else '否'}")
+        _safe_print(f"  [{state}]{extra} {label}  <{name}>")
+    _safe_print(f"管理员权限: {'是' if autostart.is_admin() else '否'}")
 
 
 if __name__ == "__main__":
