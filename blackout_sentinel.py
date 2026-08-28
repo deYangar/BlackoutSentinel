@@ -742,7 +742,8 @@ class AutostartWindow:
             action = "uninstall" if uninstall else "install"
             ok = self.autostart.relaunch_as_admin(f"--{action} {name} --bg-nopause")
             self.note.config(
-                text=("已请求管理员授权（UAC），请在弹窗中确认；完成后点「刷新状态」查看。"
+                text=("已请求管理员授权。若未弹出 UAC 窗口或操作失败，说明当前账户/设置无法自动提权，"
+                      "请右键『以管理员身份运行』本程序后再操作。"
                       if ok else "提权失败，请右键以管理员身份运行程序后再操作此项。"))
             if ok:
                 self._poll_result()
@@ -758,7 +759,7 @@ class AutostartWindow:
         if mode == "server":
             if not self.autostart.is_admin():
                 self.autostart.relaunch_as_admin("--install server --bg-nopause")
-                self.note.config(text="已请求管理员授权安装 Windows 服务，请在 UAC 弹窗确认，然后刷新。")
+                self.note.config(text="已请求管理员授权；若未弹出 UAC 窗口或操作失败，请右键『以管理员身份运行』本程序后再操作。")
                 self._poll_result()
                 return
             ok, msg = self.autostart.install_method("service")
@@ -772,7 +773,7 @@ class AutostartWindow:
         elif mode == "uninstall":
             if not self.autostart.is_admin():
                 self.autostart.relaunch_as_admin("--uninstall all --bg-nopause")
-                self.note.config(text="已请求管理员授权卸载，请在 UAC 弹窗确认，然后刷新。")
+                self.note.config(text="已请求管理员授权；若未弹出 UAC 窗口或操作失败，请右键『以管理员身份运行』本程序后再操作。")
                 self._poll_result()
                 return
             msgs = self.autostart.uninstall_all()

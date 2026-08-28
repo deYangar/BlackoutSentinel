@@ -109,7 +109,8 @@ def _install(args):
     for m in methods:
         needs_admin = dict((name, adm) for name, _, adm in autostart.METHODS).get(m, False)
         if needs_admin and not autostart.is_admin():
-            results.append(f"[跳过] {m} 需要管理员权限（请用 --install {m} 从管理员命令行运行，或 GUI 授权）")
+            results.append(f"[跳过] {m}：当前不是管理员身份（双击运行时无法自动提权）。"
+                           f"请右键『以管理员身份运行』本程序后再勾选，或从管理员命令行执行 --install {m}")
             continue
         ok, msg = autostart.install_method(m)
         results.append(f"[{'OK' if ok else '失败'}] {m}: {msg}")
@@ -139,7 +140,8 @@ def _uninstall(args):
     for m in methods:
         needs_admin = dict((name, adm) for name, _, adm in autostart.METHODS).get(m, False)
         if needs_admin and not autostart.is_admin():
-            results.append(f"[跳过] {m} 需要管理员权限")
+            results.append(f"[跳过] {m}：当前不是管理员身份（双击运行时无法自动提权）。"
+                           f"请右键『以管理员身份运行』本程序后再勾选，或从管理员命令行执行 --uninstall {m}")
             continue
         ok, msg = autostart.uninstall_method(m)
         results.append(f"[{'OK' if ok else '失败'}] {m}: {msg}")
