@@ -123,28 +123,57 @@ def service_state():
 def service_install():
     """创建服务（auto）+ 失败自动重启 + 启动。需管理员。返回 (ok, msg)。
 
-    失败策略：reset= 86400（24 小时无失败则重置计数），重启 6 次、每次间隔 60 秒。"""
+    失败策略：reset= 86400（24 小时无失败则重置计数），重启 6 次、每次间隔 60 秒。
+
+    创建用 win32service.CreateService（结构化传参，binPath 原样写入 ImagePath），
+    彻底绕开 sc.exe 命令行解析坑——subprocess 引号包裹导致 binPath 值带前导空格/引号
+    错位，ImagePath 损坏后 StartService 报 87 参数错误。"""
     if service_state() is not None:
         return True, "服务已存在"
-    # ⚠️ sc.exe 参数解析坑（2026-08-28 真机血泪）：
-    # sc 期望 "start=" 与 "auto" 是两个独立 token（cmd 切分效果）；
-    # Python subprocess 列表传 "start= auto"（含空格）会被包引号成单 token，
-    # sc 把前导空格算进值 → "无效 start= 域"。
-    # 因此：选项名与值必须拆成两个列表元素；DisplayName 值自身带引号。
-    rc, out = _run(["sc", "create", SERVICE_NAME,
-                    f"binPath= {service_binpath()}",
-                    "start=", "auto",
-                    "DisplayName=", f'"{SERVICE_DISPLAY}"'])
-    if rc != 0:
-        return False, f"创建服务失败: {out.strip()}"
-    _run(["sc", "description", SERVICE_NAME, SERVICE_DESC])
+    import win32service
+    binpath = service_binpath()
+    try:
+        scm = win32service.OpenSCManager(None, None, win32service.SC_MANAGER_ALL_ACCESS)
+        try:
+            svc = win32service.CreateService(
+                scm,
+                SERVICE_NAME,
+                SERVICE_DISPLAY,
+                win32service.SERVICE_ALL_ACCESS,
+                win32service.SERVICE_WIN32_OWN_PROCESS,
+                win32service.SERVICE_AUTO_START,
+                win32service.SERVICE_ERROR_NORMAL,
+                binpath,
+                None, 0, None, None, None, None)
+            win32service.CloseServiceHandle(svc)
+        finally:
+            win32service.CloseServiceHandle(scm)
+    except Exception as e:
+        return False, f"创建服务失败: {e}"
+    # 描述
+    try:
+        scm = win32service.OpenSCManager(None, None, win32service.SC_MANAGER_ALL_ACCESS)
+        try:
+            svc = win32service.OpenService(scm, SERVICE_NAME,
+                                           win32service.SERVICE_CHANGE_CONFIG)
+            try:
+                win32service.ChangeServiceConfig2(svc, win32service.SERVICE_CONFIG_DESCRIPTION,
+                                                  SERVICE_DESC)
+            finally:
+                win32service.CloseServiceHandle(svc)
+        finally:
+            win32service.CloseServiceHandle(scm)
+    except Exception:
+        pass
     # 失败重启：24h 无失败重置计数；连续 6 次、每次 60 秒后重启
-    # （同样拆 token，避免 actions= 值带前导空格被 sc 拒绝）
+    # （sc failure 参数已拆 token，值不含空格不会被引号包裹）
     _run(["sc", "failure", SERVICE_NAME, "reset=", "86400",
           "actions=", "restart/60000/restart/60000/restart/60000/restart/60000/restart/60000/restart/60000"])
+    # 启动
     rc2, out2 = _run(["sc", "start", SERVICE_NAME], timeout=30)
     if rc2 != 0 and "1056" not in out2 and "已启动" not in out2:
-        return True, f"服务已创建但启动可能需手动: {out2.strip()}"
+        return False, (f"服务已创建但启动失败: {out2.strip()}（请检查 exe 路径是否含空格/"
+                       f"移动位置后需重装，或手动 sc start {SERVICE_NAME} 排查）")
     return True, "服务已安装并启动（崩溃自动重启×6）"
 
 
