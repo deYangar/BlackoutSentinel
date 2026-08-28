@@ -121,16 +121,22 @@ def service_install():
     失败策略：reset= 86400（24 小时无失败则重置计数），重启 6 次、每次间隔 60 秒。"""
     if service_state() is not None:
         return True, "服务已存在"
+    # ⚠️ sc.exe 参数解析坑（2026-08-28 真机血泪）：
+    # sc 期望 "start=" 与 "auto" 是两个独立 token（cmd 切分效果）；
+    # Python subprocess 列表传 "start= auto"（含空格）会被包引号成单 token，
+    # sc 把前导空格算进值 → "无效 start= 域"。
+    # 因此：选项名与值必须拆成两个列表元素；DisplayName 值自身带引号。
     rc, out = _run(["sc", "create", SERVICE_NAME,
                     f"binPath= {service_binpath()}",
-                    "start= auto",
-                    f'DisplayName= {SERVICE_DISPLAY}'])
+                    "start=", "auto",
+                    "DisplayName=", f'"{SERVICE_DISPLAY}"'])
     if rc != 0:
         return False, f"创建服务失败: {out.strip()}"
     _run(["sc", "description", SERVICE_NAME, SERVICE_DESC])
     # 失败重启：24h 无失败重置计数；连续 6 次、每次 60 秒后重启
-    _run(["sc", "failure", SERVICE_NAME, "reset= 86400",
-          "actions= restart/60000/restart/60000/restart/60000/restart/60000/restart/60000/restart/60000"])
+    # （同样拆 token，避免 actions= 值带前导空格被 sc 拒绝）
+    _run(["sc", "failure", SERVICE_NAME, "reset=", "86400",
+          "actions=", "restart/60000/restart/60000/restart/60000/restart/60000/restart/60000/restart/60000"])
     rc2, out2 = _run(["sc", "start", SERVICE_NAME], timeout=30)
     if rc2 != 0 and "1056" not in out2 and "已启动" not in out2:
         return True, f"服务已创建但启动可能需手动: {out2.strip()}"
