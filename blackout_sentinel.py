@@ -698,15 +698,21 @@ class AutostartWindow:
         self.refresh()
 
     def _read_autostart_result(self):
-        """读取提权子进程写的结果文件（有则读后删），无返回 None。"""
+        """读取提权子进程写的结果文件。
+
+        只读**非空**文件并删除：子进程原子写入（tmp+replace）前文件不存在，
+        若读到空内容说明文件可能刚被截断/正在写，不删、继续轮询，
+        避免竞态把结果文件删掉导致永久静默。"""
         import tempfile
         p = os.path.join(tempfile.gettempdir(), "blackoutsentinel_autostart_result.txt")
         try:
             if os.path.exists(p):
                 with open(p, "r", encoding="utf-8") as f:
                     text = f.read().strip()
-                os.remove(p)
-                return text or None
+                if text:
+                    os.remove(p)
+                    return text
+                return None  # 空文件＝写入中，不删，等下一轮
         except Exception:
             pass
         return None

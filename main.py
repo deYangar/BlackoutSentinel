@@ -69,9 +69,13 @@ def _autostart_result_path() -> str:
 
 
 def _write_autostart_result(text: str):
+    """结果文件原子写入：先写 .tmp 再 os.replace，避免 GUI 轮询读到截断中的空文件。"""
     try:
-        with open(_autostart_result_path(), "w", encoding="utf-8") as f:
+        p = _autostart_result_path()
+        tmp = p + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
             f.write(text)
+        os.replace(tmp, p)
     except Exception:
         pass
 
