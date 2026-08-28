@@ -648,7 +648,7 @@ class AutostartWindow:
         quick.pack(fill="x", padx=12)
         ttk.Button(quick, text="一键部署·服务器(服务)",
                    command=lambda: self._quick("server")).pack(side="left", padx=4)
-        ttk.Button(quick, text="一键部署·桌面(登录GUI)",
+        ttk.Button(quick, text="一键部署·桌面(自动后台监控)",
                    command=lambda: self._quick("desktop")).pack(side="left", padx=4)
         ttk.Button(quick, text="全部卸载",
                    command=lambda: self._quick("uninstall")).pack(side="left", padx=4)

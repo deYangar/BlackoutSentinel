@@ -21,12 +21,13 @@ def _auto_elevate(args):
     这样 GUI 本身就是管理员，自启管理（boot-task 等需管理员方式）直接执行，
     不再依赖勾选时的提权子进程（在部分 UAC 自动接受设置下会静默失败）。
 
-    - 不参与提权的模式：--service-run（SCM 以 SYSTEM 启动）、--status（纯查询）
+    - 不参与提权的模式：--service-run（SCM 以 SYSTEM 启动）、--background（后台监控不需要
+      管理员，且登录自启场景不应弹 UAC）、--status（纯查询）
     - 提权重启时带 --elevated 标记；若提权后仍非管理员（UAC 设置异常），
       带标记运行不再二次提权，避免死循环
     - 提权失败时保持普通权限继续运行（GUI 内已有明确提示引导右键管理员运行）
     """
-    if ("--service-run" in args or "--status" in args
+    if ("--service-run" in args or "--background" in args or "--status" in args
             or "--no-elevate" in args or "--elevated" in args):
         return args
     import sentinel_autostart as autostart

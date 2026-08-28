@@ -48,10 +48,15 @@ def gui_command() -> str:
 
 
 def background_command() -> str:
-    """后台监控命令行（无窗口，跑 --background）。"""
+    """后台监控命令行（无窗口，跑 --background）。登录自启方式一律用它，
+    保证自启后自动进入监控而非打开界面等人手动点。"""
     if getattr(sys, "frozen", False):
         return f'"{sys.executable}" --background'
-    return f'"{sys.executable}" "{_script()}" --background'
+    # 源码运行用 pythonw.exe（无控制台窗口）
+    pyw = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
+    if not os.path.exists(pyw):
+        pyw = sys.executable
+    return f'"{pyw}" "{_script()}" --background'
 
 
 def service_binpath() -> str:
@@ -256,13 +261,13 @@ def boot_task_uninstall():
 
 
 def logon_task_install():
-    """登录时当前用户 GUI 任务。"""
+    """登录时自动后台监控任务（--background，登录即监控，无人值守）。"""
     rc, out = _run(["schtasks", "/create", "/tn", TASK_LOGON,
-                    "/tr", gui_command(),
+                    "/tr", background_command(),
                     "/sc", "onlogon", "/rl", "HIGHEST", "/f"])
     if rc != 0:
         return False, f"创建登录任务失败: {out.strip()}"
-    return True, "登录任务已安装"
+    return True, "登录任务已安装（登录后自动后台监控）"
 
 
 def logon_task_uninstall():
@@ -287,14 +292,15 @@ def reg_run_installed() -> bool:
 
 
 def reg_run_install():
+    """注册表 Run：登录时自动后台监控（--background）。"""
     try:
         import winreg
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
                              r"Software\Microsoft\Windows\CurrentVersion\Run",
                              0, winreg.KEY_SET_VALUE | winreg.KEY_READ)
-        winreg.SetValueEx(key, REG_RUN_NAME, 0, winreg.REG_SZ, gui_command())
+        winreg.SetValueEx(key, REG_RUN_NAME, 0, winreg.REG_SZ, background_command())
         winreg.CloseKey(key)
-        return True, "注册表开机启动已添加"
+        return True, "注册表开机启动已添加（登录后自动后台监控）"
     except Exception as e:
         return False, f"添加注册表失败: {e}"
 
@@ -341,15 +347,15 @@ def startup_lnk_install():
         sc = shell.CreateShortcut(lnk)
         if getattr(sys, "frozen", False):
             sc.TargetPath = sys.executable
-            sc.Arguments = ""
+            sc.Arguments = "--background"
         else:
             pyw = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
             sc.TargetPath = pyw if os.path.exists(pyw) else sys.executable
-            sc.Arguments = f'"{_script()}"'
+            sc.Arguments = f'"{_script()}" --background'
         sc.WorkingDirectory = core.app_dir()
         sc.Description = "断电哨兵 Blackout Sentinel"
         sc.Save()
-        return True, "启动文件夹快捷方式已创建"
+        return True, "启动文件夹快捷方式已创建（登录后自动后台监控）"
     except Exception as e:
         return False, f"创建快捷方式失败: {e}"
 
@@ -368,9 +374,9 @@ def startup_lnk_uninstall():
 METHODS = [
     ("service",    "Windows 服务（开机·无需登录·后台）", True),
     ("boot-task",  "任务计划·开机时（SYSTEM 后台·失败重启）", True),
-    ("logon-task", "任务计划·登录时（GUI）",            False),
-    ("reg-run",    "注册表开机启动（GUI）",             False),
-    ("startup-lnk","启动文件夹快捷方式（GUI）",         False),
+    ("logon-task", "任务计划·登录时（自动后台监控）",      False),
+    ("reg-run",    "注册表开机启动（登录后自动后台监控）", False),
+    ("startup-lnk","启动文件夹快捷方式（登录后自动后台监控）", False),
 ]
 
 
