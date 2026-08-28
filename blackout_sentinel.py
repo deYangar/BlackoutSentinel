@@ -54,7 +54,7 @@ class WatchdogApp:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.dpi_scale = setup_dpi_awareness(root)
-        self.root.title("🛡️ 断电哨兵 Blackout Sentinel")
+        self.root.title(f"🛡️ 断电哨兵 Blackout Sentinel v{core.APP_VERSION}")
         self.root.geometry(f"{int(820 * self.dpi_scale)}x{int(700 * self.dpi_scale)}")
         self.root.minsize(int(720 * self.dpi_scale), int(560 * self.dpi_scale))
 

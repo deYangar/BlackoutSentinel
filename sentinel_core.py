@@ -19,6 +19,9 @@ import subprocess
 import datetime
 from concurrent.futures import ThreadPoolExecutor
 
+# 应用版本号（GUI 标题栏、发布用）
+APP_VERSION = "1.1.1"
+
 # 监控逻辑统一通过 _now() 取时间，便于测试 mock（不影响 time.sleep）
 _now = time.time
 _sleep = time.sleep
