@@ -131,23 +131,27 @@ NAS / 服务器 / 工作站接了 UPS，但 UPS **没有 USB / 网卡通讯口**
 
 点「⚙️ 开机自启」管理，支持 5 种冗余部署方式（可多选）：
 
+> **所有自启方式启动后都会自动进入监控**（`--background` 后台模式），无需人工干预。
+> 双击打开 GUI 时会自动提权为管理员运行（UAC 自动接受时静默无感），自启安装一步到位。
+
 | 方式 | 身份 | 说明 |
 |---|---|---|
 | **Windows 服务（service）** | SYSTEM | 开机即启动，无需登录，崩溃自动重启×6（24h 重置计数），**推荐** |
 | 开机计划任务（boot-task） | SYSTEM | 开机后台运行，XML 策略：失败重启×3、错过补跑、电池供电也运行 |
-| 登录计划任务（logon-task） | 当前用户 | 登录后启动 GUI |
-| 注册表 Run（reg-run） | 当前用户 | 登录自启 GUI |
-| 启动文件夹快捷方式（startup-lnk） | 当前用户 | 登录自启 GUI |
+| 登录计划任务（logon-task） | 当前用户 | 登录后自动后台监控 |
+| 注册表 Run（reg-run） | 当前用户 | 登录后自动后台监控 |
+| 启动文件夹快捷方式（startup-lnk） | 当前用户 | 登录后自动后台监控 |
 
 - 服务 / 后台模式**无窗口运行**，配置文件热加载
 - 若后台监控已在运行，打开 GUI 会自动进入「配置面板模式」——只改配置，不重复监控
+- 双击运行即自动提权为管理员；若提权失败（UAC 设置异常），需管理员方式操作时界面会明确提示右键「以管理员身份运行」
 
 命令行：
 
 ```bash
-BlackoutSentinel.exe                    # 启动 GUI
-BlackoutSentinel.exe --background       # 后台监控（无窗口）
-BlackoutSentinel.exe --install all      # 安装全部自启（server/desktop/all/单个方式名）
+BlackoutSentinel.exe                    # 启动 GUI（自动提权为管理员）
+BlackoutSentinel.exe --background       # 后台监控（无窗口，不提权）
+BlackoutSentinel.exe --install all      # 安装全部自启（server/desktop/all/单个方式名，自动提权）
 BlackoutSentinel.exe --uninstall all    # 卸载自启
 BlackoutSentinel.exe --status           # 查看各自启方式状态
 ```
