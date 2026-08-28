@@ -11,6 +11,7 @@
   BlackoutSentinel.exe --status           打印各自启方式状态
 """
 
+import os
 import sys
 
 
@@ -57,6 +58,24 @@ def _target_method(args):
     return "all"
 
 
+def _autostart_result_path() -> str:
+    """提权子进程与 GUI 之间的结果文件（临时目录，双方同用户同 TEMP）。
+
+    windowed exe 无 console、print 不可见；文件日志默认关闭——
+    安装/卸载结果若不落盘，UAC 提权子进程的成败对用户完全静默。
+    因此无论日志开关如何，结果都覆盖写入此文件，GUI 轮询读取显示。"""
+    import tempfile
+    return os.path.join(tempfile.gettempdir(), "blackoutsentinel_autostart_result.txt")
+
+
+def _write_autostart_result(text: str):
+    try:
+        with open(_autostart_result_path(), "w", encoding="utf-8") as f:
+            f.write(text)
+    except Exception:
+        pass
+
+
 def _install(args):
     import sentinel_autostart as autostart
     import sentinel_core as core
@@ -80,9 +99,11 @@ def _install(args):
             continue
         ok, msg = autostart.install_method(m)
         results.append(f"[{'OK' if ok else '失败'}] {m}: {msg}")
-    print("\n".join(results))
+    text = "\n".join(results)
+    print(text)
     core.append_file_log(core.service_log_path(),
                          "自启安装: " + " | ".join(results))
+    _write_autostart_result(text)
     if "--bg-nopause" not in args:
         try:
             input("\n按回车退出...")
@@ -107,9 +128,11 @@ def _uninstall(args):
             continue
         ok, msg = autostart.uninstall_method(m)
         results.append(f"[{'OK' if ok else '失败'}] {m}: {msg}")
-    print("\n".join(results))
+    text = "\n".join(results)
+    print(text)
     core.append_file_log(core.service_log_path(),
                          "自启卸载: " + " | ".join(results))
+    _write_autostart_result(text)
     if "--bg-nopause" not in args:
         try:
             input("\n按回车退出...")

@@ -660,6 +660,11 @@ class AutostartWindow:
         self.refresh()
 
     def refresh(self):
+        res = self._read_autostart_result()
+        if res:
+            self.note.config(text=res.replace("\n", "；"),
+                             foreground="#c0392b" if "失败" in res else "#1a7f37")
+            self.app._log(res)
         for name, label, admin in self.autostart.METHODS:
             state_lbl, var = self.rows[name]
             installed = self.autostart.method_status(name)
@@ -692,6 +697,38 @@ class AutostartWindow:
             self._do(name, uninstall=False)
         self.refresh()
 
+    def _read_autostart_result(self):
+        """读取提权子进程写的结果文件（有则读后删），无返回 None。"""
+        import tempfile
+        p = os.path.join(tempfile.gettempdir(), "blackoutsentinel_autostart_result.txt")
+        try:
+            if os.path.exists(p):
+                with open(p, "r", encoding="utf-8") as f:
+                    text = f.read().strip()
+                os.remove(p)
+                return text or None
+        except Exception:
+            pass
+        return None
+
+    def _poll_result(self, tries=20):
+        """提权子进程跑完后轮询结果文件并显示（每 1.5s，最多 30s）。"""
+        try:
+            if not self.win.winfo_exists():
+                return
+        except Exception:
+            return
+        if tries <= 0:
+            return
+        res = self._read_autostart_result()
+        if res is None:
+            self.win.after(1500, lambda: self._poll_result(tries - 1))
+            return
+        self.note.config(text=res.replace("\n", "；"),
+                         foreground="#c0392b" if "失败" in res else "#1a7f37")
+        self.app._log(res)
+        self.refresh()
+
     def _do(self, name, uninstall):
         admin = dict((n, a) for n, _, a in self.autostart.METHODS).get(name, False)
         if admin and not self.autostart.is_admin():
@@ -701,6 +738,8 @@ class AutostartWindow:
             self.note.config(
                 text=("已请求管理员授权（UAC），请在弹窗中确认；完成后点「刷新状态」查看。"
                       if ok else "提权失败，请右键以管理员身份运行程序后再操作此项。"))
+            if ok:
+                self._poll_result()
             return
         if uninstall:
             ok, msg = self.autostart.uninstall_method(name)
@@ -714,6 +753,7 @@ class AutostartWindow:
             if not self.autostart.is_admin():
                 self.autostart.relaunch_as_admin("--install server --bg-nopause")
                 self.note.config(text="已请求管理员授权安装 Windows 服务，请在 UAC 弹窗确认，然后刷新。")
+                self._poll_result()
                 return
             ok, msg = self.autostart.install_method("service")
             self.note.config(text=msg, foreground="#1a7f37" if ok else "#c0392b")
@@ -727,6 +767,7 @@ class AutostartWindow:
             if not self.autostart.is_admin():
                 self.autostart.relaunch_as_admin("--uninstall all --bg-nopause")
                 self.note.config(text="已请求管理员授权卸载，请在 UAC 弹窗确认，然后刷新。")
+                self._poll_result()
                 return
             msgs = self.autostart.uninstall_all()
             self.note.config(text="；".join(msgs) if msgs else "无已安装项", foreground="#1a7f37")
