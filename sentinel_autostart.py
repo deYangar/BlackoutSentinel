@@ -144,7 +144,7 @@ def service_install():
                 win32service.SERVICE_AUTO_START,
                 win32service.SERVICE_ERROR_NORMAL,
                 binpath,
-                None, 0, None, None, None, None)
+                None, 0, None, None, None)
             win32service.CloseServiceHandle(svc)
         finally:
             win32service.CloseServiceHandle(scm)
